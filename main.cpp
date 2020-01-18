@@ -2,18 +2,44 @@
 #include <unordered_map>
 #include <regex>
 #include <list>
+class Mode {
+};
+class SequenceMode : public Mode {
+};
+class OddEvenMode : public Mode {
+};
+class ShuffleMode : public Mode {
+};
+SequenceMode createSequenceMode() {
+    return SequenceMode();
+}
+OddEvenMode createOddEvenMode() {
+    return OddEvenMode();
+}
+ShuffleMode createShuffleMode() {
+    return ShuffleMode();
+}
 class PlaylistInterface {
 public:
-    virtual void play();
+    virtual void play(){}
 };
 class Playlist : PlaylistInterface {
 private:
     std::list<PlaylistInterface> list_to_play;
+    const char* name;
+    Mode* mode;
 public:
+    Playlist(const char* myname) {
+        list_to_play = std::list<PlaylistInterface>();
+        name = myname;
+        SequenceMode sm;
+        mode = &sm;
+    }
     void add(PlaylistInterface& pi);
     void add(PlaylistInterface& pi, size_t position);
     void remove();
     void remove(size_t position);
+    void setMode(Mode& mode);
 };
 
 void Playlist::add(PlaylistInterface &pi) {
@@ -36,6 +62,9 @@ void Playlist::remove(size_t position) {
     list_to_play.erase(it);
 }
 
+void Playlist::setMode(Mode& new_mode) {
+    mode = &new_mode;
+}
 
 class Play {
 private:
@@ -51,25 +80,40 @@ private:
     std::unordered_map<std::string, std::string> metadata;
     std::string artist;
     std::string title;
+    std::string lyrics;
 public:
-    Song(std::unordered_map<std::string, std::string>& data, std::string& new_artist, std::string& new_title) {
+    Song(std::unordered_map<std::string, std::string>& data, std::string& new_artist, std::string& new_title, std::string& lyr) {
         metadata = data;
         artist = new_artist;
         title = new_title;
+        lyrics = lyr;
     }
+    void play() override;
 };
+
+void Song::play() {
+    std::cout<<"Song ["<<artist<<" "<<title<<"]: "<<lyrics;
+}
+
 class Movie : public Play, public PlaylistInterface {
 private:
     std::unordered_map<std::string, std::string> metadata;
     std::string year;
     std::string title;
+    std::string lyrics;
 public:
-    Movie(std::unordered_map<std::string, std::string>& data, std::string& new_year, std::string& new_title) {
+    Movie(std::unordered_map<std::string, std::string>& data, std::string& new_year, std::string& new_title, std::string& lyr) {
         metadata = data;
         year = new_year;
         title = new_title;
+        lyrics = lyr;
     }
+    void play() override;
 };
+
+void Movie::play() {
+    std::cout<<"Song ["<<title<<" "<<year<<"]: "<<lyrics;
+}
 
 class File {
 private:
@@ -171,7 +215,7 @@ class AudioFactory : public PlayFactory {
 };
 
 Play AudioFactory::create_play(File& file) {
-    return Song(file.get_metadata(), file.get_artist(), file.get_title());
+    return Song(file.get_metadata(), file.get_artist(), file.get_title(), file.get_lyrics());
 }
 class MovieFactory : public PlayFactory {
 public:
@@ -180,11 +224,12 @@ public:
 };
 
 Play MovieFactory::create_play(File &file) {
-    return Movie(file.get_metadata(), file.get_year(), file.get_title());
+    return Movie(file.get_metadata(), file.get_year(), file.get_title(), file.get_lyrics());
 }
 class Player {
 public:
-    static Play openFile(File& file);
+     static Play openFile(File& file);
+     static Playlist createPlaylist(const char*);
 };
 Play Player::openFile(File& file) {
     Play play;
@@ -202,10 +247,14 @@ Play Player::openFile(File& file) {
     return play;
 }
 
-int main() {
-    const char* s = "audio|artist:Dire Straits|title:Money for Nothing|"
-                    "Now look at them yo-yo's that's the way you do it...";
+Playlist Player::createPlaylist(const char *name) {
+    return Playlist(name);
+}
 
+int main() {
+    Player player;
+
+    auto mishmash = player.createPlaylist("mishmash");
 
     return 0;
 }
