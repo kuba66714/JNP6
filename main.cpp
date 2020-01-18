@@ -94,10 +94,7 @@ private:
     std::string title;
     std::string year;
 public:
-    Play() {
-
-    }
-    static Play openFile(File& file);
+    Play() = default;
 };
 class Song : public Play {
 private:
@@ -128,9 +125,11 @@ public:
     virtual Play create_play(File& file);
 };
 
-Play PlayFactory::create_play(File& file) {
-
+Play PlayFactory::create_play(File &file) {
+    return Play();
 }
+
+
 class AudioFactory : public PlayFactory {
     public:
     AudioFactory() = default;
@@ -149,8 +148,11 @@ public:
 Play MovieFactory::create_play(File &file) {
     return Movie(file.get_metadata(), file.get_year(), file.get_title());
 }
-
-Play Play::openFile(File& file) {
+class Player {
+public:
+    static Play openFile(File& file);
+};
+Play Player::openFile(File& file) {
     Play play;
     if (file.get_file_type() == "audio") {
         AudioFactory af = AudioFactory();
@@ -170,6 +172,6 @@ int main() {
     const char* s = "audio|artist:Dire Straits|title:Money for Nothing|"
                     "Now look at them yo-yo's that's the way you do it...";
 
-    
+
     return 0;
 }
