@@ -1,8 +1,75 @@
 #include <iostream>
 #include <unordered_map>
 #include <regex>
+#include <list>
+class PlaylistInterface {
+public:
+    virtual void play();
+};
+class Playlist : PlaylistInterface {
+private:
+    std::list<PlaylistInterface> list_to_play;
+public:
+    void add(PlaylistInterface& pi);
+    void add(PlaylistInterface& pi, size_t position);
+    void remove();
+    void remove(size_t position);
+};
+
+void Playlist::add(PlaylistInterface &pi) {
+    list_to_play.push_back(pi);
+}
+
+void Playlist::add(PlaylistInterface &pi, size_t position) {
+    auto it = list_to_play.begin();
+    std::advance(it, position);
+    list_to_play.insert(it, pi);
+}
+
+void Playlist::remove() {
+    list_to_play.pop_back();
+}
+
+void Playlist::remove(size_t position) {
+    auto it = list_to_play.begin();
+    std::advance(it, position);
+    list_to_play.erase(it);
+}
 
 
+class Play {
+private:
+    std::unordered_map<std::string, std::string> metadata;
+    std::string artist;
+    std::string title;
+    std::string year;
+public:
+    Play() = default;
+};
+class Song : public Play, public PlaylistInterface {
+private:
+    std::unordered_map<std::string, std::string> metadata;
+    std::string artist;
+    std::string title;
+public:
+    Song(std::unordered_map<std::string, std::string>& data, std::string& new_artist, std::string& new_title) {
+        metadata = data;
+        artist = new_artist;
+        title = new_title;
+    }
+};
+class Movie : public Play, public PlaylistInterface {
+private:
+    std::unordered_map<std::string, std::string> metadata;
+    std::string year;
+    std::string title;
+public:
+    Movie(std::unordered_map<std::string, std::string>& data, std::string& new_year, std::string& new_title) {
+        metadata = data;
+        year = new_year;
+        title = new_title;
+    }
+};
 
 class File {
 private:
@@ -87,39 +154,6 @@ void File::parse(std::string &str) {
 }
 
 
-class Play {
-private:
-    std::unordered_map<std::string, std::string> metadata;
-    std::string artist;
-    std::string title;
-    std::string year;
-public:
-    Play() = default;
-};
-class Song : public Play {
-private:
-    std::unordered_map<std::string, std::string> metadata;
-    std::string artist;
-    std::string title;
-public:
-    Song(std::unordered_map<std::string, std::string>& data, std::string& new_artist, std::string& new_title) {
-        metadata = data;
-        artist = new_artist;
-        title = new_title;
-    }
-};
-class Movie : public Play {
-private:
-    std::unordered_map<std::string, std::string> metadata;
-    std::string year;
-    std::string title;
-public:
-    Movie(std::unordered_map<std::string, std::string>& data, std::string& new_year, std::string& new_title) {
-        metadata = data;
-        year = new_year;
-        title = new_title;
-    }
-};
 class PlayFactory {
 public:
     virtual Play create_play(File& file);
