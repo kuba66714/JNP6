@@ -21,32 +21,37 @@ ShuffleMode createShuffleMode() {
 }
 class PlaylistInterface {
 public:
-    virtual void play(){}
+    virtual void play() = 0;
 };
-class Playlist : PlaylistInterface {
+class Playlist : public PlaylistInterface {
 private:
-    std::list<PlaylistInterface> list_to_play;
+    std::list<PlaylistInterface*> list_to_play;
     const char* name;
     Mode* mode;
 public:
     Playlist(const char* myname) {
-        list_to_play = std::list<PlaylistInterface>();
+        list_to_play = std::list<PlaylistInterface*>();
         name = myname;
         SequenceMode sm;
         mode = &sm;
     }
-    void add(PlaylistInterface& pi);
-    void add(PlaylistInterface& pi, size_t position);
+    void add(PlaylistInterface* pi);
+    void add(PlaylistInterface* pi, size_t position);
     void remove();
     void remove(size_t position);
     void setMode(Mode& mode);
+    std::list<PlaylistInterface*>& getter() {
+        return list_to_play;
+    }
+    void play() override;
 };
 
-void Playlist::add(PlaylistInterface &pi) {
+void Playlist::add(PlaylistInterface* pi) {
     list_to_play.push_back(pi);
+    PlaylistInterface* p = list_to_play.front();
 }
 
-void Playlist::add(PlaylistInterface &pi, size_t position) {
+void Playlist::add(PlaylistInterface* pi, size_t position) {
     auto it = list_to_play.begin();
     std::advance(it, position);
     list_to_play.insert(it, pi);
@@ -66,7 +71,7 @@ void Playlist::setMode(Mode& new_mode) {
     mode = &new_mode;
 }
 
-class Play {
+class Play : public PlaylistInterface {
 private:
     std::unordered_map<std::string, std::string> metadata;
     std::string artist;
@@ -74,8 +79,9 @@ private:
     std::string year;
 public:
     Play() = default;
+    void play() override = 0;
 };
-class Song : public Play, public PlaylistInterface {
+class Song : public Play {
 private:
     std::unordered_map<std::string, std::string> metadata;
     std::string artist;
@@ -95,7 +101,7 @@ void Song::play() {
     std::cout<<"Song ["<<artist<<" "<<title<<"]: "<<lyrics;
 }
 
-class Movie : public Play, public PlaylistInterface {
+class Movie : public Play {
 private:
     std::unordered_map<std::string, std::string> metadata;
     std::string year;
@@ -162,11 +168,12 @@ void File::parse(std::string &str) {
     file_type = file_type.substr(0, file_type.size() - 1);
     str = m.suffix().str();
     std::regex e2("([a-zA-Z0-9 ]+):");
-    std::regex e3("([a-zA-Z0-9 ]+)\\|");
-    std::regex e4("(.*?)");
+    std::regex e3("[^|]*\\|");
+    std::regex e4(R"([a-zA-Z0-9\,\.\!\?\'\:\;\-\ ]+)");
     while (std::regex_search(str, m, e2)) {
         std::string data_type = m.str(0);
         data_type = data_type.substr(0, data_type.size() - 1);
+        str = m.suffix().str();
         std::regex_search(str, m, e3);
         std::string new_data = m.str(0);
         new_data = new_data.substr(0, new_data.size() - 1);
@@ -181,8 +188,11 @@ void File::parse(std::string &str) {
         }
         str = m.suffix().str();
     }
-    std::regex_search(str, m, e4);
-    lyrics = m.str(0);
+    if (std::regex_match(str, m, e4)) {
+        lyrics = str;
+    } else {
+        //BLAD
+    }
     if (lyrics.empty()) {
         //BLAD
     }
@@ -200,39 +210,36 @@ void File::parse(std::string &str) {
 
 class PlayFactory {
 public:
-    virtual Play create_play(File& file);
+    virtual Play* create_play(File& file) = 0;
 };
-
-Play PlayFactory::create_play(File &file) {
-    return Play();
-}
-
 
 class AudioFactory : public PlayFactory {
     public:
     AudioFactory() = default;
-    Play create_play(File& file) override ;
+    Play* create_play(File& file) override ;
 };
 
-Play AudioFactory::create_play(File& file) {
-    return Song(file.get_metadata(), file.get_artist(), file.get_title(), file.get_lyrics());
+Play* AudioFactory::create_play(File& file) {
+    Play* play = new Song(file.get_metadata(), file.get_artist(), file.get_title(), file.get_lyrics());
+    return play;
 }
 class MovieFactory : public PlayFactory {
 public:
     MovieFactory() = default;
-    Play create_play(File& file) override ;
+    Play* create_play(File& file) override ;
 };
 
-Play MovieFactory::create_play(File &file) {
-    return Movie(file.get_metadata(), file.get_year(), file.get_title(), file.get_lyrics());
+Play* MovieFactory::create_play(File &file) {
+    Play* play =  new Movie(file.get_metadata(), file.get_year(), file.get_title(), file.get_lyrics());
+    return play;
 }
 class Player {
 public:
-     static Play openFile(File& file);
-     static Playlist createPlaylist(const char*);
+     static Play* openFile(File file);
+     static Playlist* createPlaylist(const char*);
 };
-Play Player::openFile(File& file) {
-    Play play;
+Play* Player::openFile(File file) {
+    Play* play = nullptr;
     if (file.get_file_type() == "audio") {
         AudioFactory af = AudioFactory();
         play = af.create_play(file);
@@ -247,14 +254,37 @@ Play Player::openFile(File& file) {
     return play;
 }
 
-Playlist Player::createPlaylist(const char *name) {
-    return Playlist(name);
+Playlist* Player::createPlaylist(const char *name) {
+    auto playlist = new Playlist(name);
+    return playlist;
 }
 
 int main() {
     Player player;
 
     auto mishmash = player.createPlaylist("mishmash");
+    auto armstrong = player.createPlaylist("armstrong");
+    File f = File("audio|artist:Louis Armstrong|title:What a Wonderful World|"
+                  "I see trees of green, red roses too...");
+    auto whatAWonderfulWorld = player.openFile(File("audio|artist:Louis Armstrong|title:What a Wonderful World|"
+                                                    "I see trees of green, red roses too..."));
+    auto helloDolly = player.openFile(File("audio|artist:Louis Armstrong|title:Hello, Dolly!|"
+                                           "Hello, Dolly! This is Louis, Dolly"));
+    armstrong->add(whatAWonderfulWorld);
+    armstrong->add(helloDolly);
+    armstrong->play();
+    auto direstraits = player.openFile(File("audio|artist:Dire Straits|title:Money for Nothing|"
+                                            "Now look at them yo-yo's that's the way you do it..."));
+    auto cabaret = player.openFile(File("video|title:Cabaret|year:1972|Qvfcynlvat Pnonerg"));
+
+
+    mishmash->add(cabaret);
+    mishmash->add(armstrong);
+    mishmash->add(direstraits, 1);
+    mishmash->add(direstraits);
+
+    std::cout << "=== Playing 'mishmash' (default sequence mode)" << std::endl;
+    mishmash->play();
 
     return 0;
 }
