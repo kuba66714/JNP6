@@ -71,64 +71,81 @@ void Playlist::setMode(Mode& new_mode) {
     mode = &new_mode;
 }
 
+void Playlist::play() {
+    std::cout<<"Playlist ["<<name<<"]"<<std::endl;
+    std::list<PlaylistInterface*>::iterator it;
+    for (it = list_to_play.begin(); it != list_to_play.end(); it++) {
+        (*it)->play();
+    }
+}
+
 class Play : public PlaylistInterface {
-private:
-    std::unordered_map<std::string, std::string> metadata;
-    std::string artist;
-    std::string title;
-    std::string year;
+
 public:
     Play() = default;
     void play() override = 0;
 };
 class Song : public Play {
 private:
-    std::unordered_map<std::string, std::string> metadata;
     std::string artist;
     std::string title;
     std::string lyrics;
 public:
-    Song(std::unordered_map<std::string, std::string>& data, std::string& new_artist, std::string& new_title, std::string& lyr) {
-        metadata = data;
-        artist = new_artist;
-        title = new_title;
-        lyrics = lyr;
+    Song(std::unordered_map<std::string, std::string>& data, std::string& lyrics_add) {
+        auto it = data.find("artist");
+        if (it == data.end()) {
+            //BLAD
+        } else {
+            artist = it->second;
+        }
+        it = data.find("title");
+        if (it == data.end()) {
+            //BLAD
+        } else {
+            title = it->second;
+        }
+        lyrics = lyrics_add;
     }
     void play() override;
 };
 
 void Song::play() {
-    std::cout<<"Song ["<<artist<<" "<<title<<"]: "<<lyrics;
+    std::cout<<"Song ["<<artist<<" "<<title<<"]: "<<lyrics<<std::endl;
 }
 
 class Movie : public Play {
 private:
-    std::unordered_map<std::string, std::string> metadata;
     std::string year;
     std::string title;
     std::string lyrics;
 public:
-    Movie(std::unordered_map<std::string, std::string>& data, std::string& new_year, std::string& new_title, std::string& lyr) {
-        metadata = data;
-        year = new_year;
-        title = new_title;
+    Movie(std::unordered_map<std::string, std::string>& data, std::string& lyr) {
+        auto it = data.find("year");
+        if (it == data.end()) {
+            //BLAD
+        } else {
+            year = it->second;
+        }
+        it = data.find("title");
+        if (it == data.end()) {
+            //BLAD
+        } else {
+            title = it->second;
+        }
         lyrics = lyr;
     }
     void play() override;
 };
 
 void Movie::play() {
-    std::cout<<"Song ["<<title<<" "<<year<<"]: "<<lyrics;
+    std::cout<<"Song ["<<title<<" "<<year<<"]: "<<lyrics<<std::endl;
 }
 
 class File {
 private:
     std::unordered_map<std::string, std::string> metadata;
     std::string file_type;
-    std::string artist;
-    std::string title;
     std::string lyrics;
-    std::string year;
     void parse(std::string& str);
 public:
      File(const char *str) {
@@ -139,21 +156,13 @@ public:
     std::string& get_file_type() {
          return file_type;
      }
-    std::string& get_artist() {
-        return artist;
-    }
-    std::string& get_title() {
-        return title;
-    }
-    std::string& get_lyrics() {
-        return lyrics;
-    }
-    std::string& get_year() {
-        return year;
-    }
+
     std::unordered_map<std::string, std::string>& get_metadata() {
         return metadata;
     }
+    std::string& get_lyrics() {
+         return lyrics;
+     }
 };
 
 void File::parse(std::string &str) {
@@ -177,33 +186,15 @@ void File::parse(std::string &str) {
         std::regex_search(str, m, e3);
         std::string new_data = m.str(0);
         new_data = new_data.substr(0, new_data.size() - 1);
-        if (data_type == "artist") {
-            artist = new_data;
-        } else if (data_type == "title") {
-            title = new_data;
-        } else if (data_type == "year") {
-            year = new_data;
-        } else {
-            metadata.insert(std::make_pair(data_type, new_data));
-        }
+
+        metadata.insert(std::make_pair(data_type, new_data));
+
         str = m.suffix().str();
     }
     if (std::regex_match(str, m, e4)) {
         lyrics = str;
     } else {
         //BLAD
-    }
-    if (lyrics.empty()) {
-        //BLAD
-    }
-    if (file_type == "audio") {
-        if (artist.empty() || title.empty()) {
-            //BLAD
-        }
-    } else if (file_type == "video") {
-        if (year.empty() || title.empty()) {
-            //BLAD
-        }
     }
 }
 
@@ -220,7 +211,7 @@ class AudioFactory : public PlayFactory {
 };
 
 Play* AudioFactory::create_play(File& file) {
-    Play* play = new Song(file.get_metadata(), file.get_artist(), file.get_title(), file.get_lyrics());
+    Play* play = new Song(file.get_metadata(), file.get_lyrics());
     return play;
 }
 class MovieFactory : public PlayFactory {
@@ -230,7 +221,7 @@ public:
 };
 
 Play* MovieFactory::create_play(File &file) {
-    Play* play =  new Movie(file.get_metadata(), file.get_year(), file.get_title(), file.get_lyrics());
+    Play* play =  new Movie(file.get_metadata(), file.get_lyrics());
     return play;
 }
 class Player {
@@ -272,7 +263,6 @@ int main() {
                                            "Hello, Dolly! This is Louis, Dolly"));
     armstrong->add(whatAWonderfulWorld);
     armstrong->add(helloDolly);
-    armstrong->play();
     auto direstraits = player.openFile(File("audio|artist:Dire Straits|title:Money for Nothing|"
                                             "Now look at them yo-yo's that's the way you do it..."));
     auto cabaret = player.openFile(File("video|title:Cabaret|year:1972|Qvfcynlvat Pnonerg"));
