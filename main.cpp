@@ -12,19 +12,25 @@ public:
 class WrongType : public PlayerException {
 public:
     const char* what() const noexcept override {
-        return "Zly typ pliku";
+        return "unsupported type";
     }
 };
 class WrongLyrics : public PlayerException {
 public:
     const char* what() const noexcept override {
-        return "Zly format slow";
+        return "corrupt content";
     }
 };
 class NoNecessaryData : public PlayerException {
 public:
     const char* what() const noexcept override {
-        return "Brak potrzebnych danych";
+        return "no necessary data";
+    }
+};
+class CorruptedFile : public PlayerException {
+public:
+    const char* what() const noexcept override {
+        return "corrupt file";
     }
 };
 class PlaylistInterface {
@@ -244,15 +250,20 @@ void File::parse(std::string &str) {
 
     std::smatch m;
     std::regex e1("^(audio|video)\\|");
+    std::regex e2("([a-zA-Z0-9 ]+):");
+    std::regex e3("[^|]*\\|");
+    std::regex e4(R"([a-zA-Z0-9\,\.\!\?\'\:\;\-\ ]+)");
     if (!std::regex_search(str, m, e1)) {
-        throw WrongType();
+        if (std::regex_search(str, m, e3)) {
+            throw WrongType();
+        } else {
+            throw CorruptedFile();
+        }
     }
     file_type = m.str(0);
     file_type = file_type.substr(0, file_type.size() - 1);
     str = m.suffix().str();
-    std::regex e2("([a-zA-Z0-9 ]+):");
-    std::regex e3("[^|]*\\|");
-    std::regex e4(R"([a-zA-Z0-9\,\.\!\?\'\:\;\-\ ]+)");
+
     while (std::regex_search(str, m, e2)) {
         std::string data_type = m.str(0);
         data_type = data_type.substr(0, data_type.size() - 1);
