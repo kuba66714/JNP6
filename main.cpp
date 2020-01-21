@@ -5,8 +5,6 @@
 #include <random>
 
 class PlayerException : public std::exception{
-public:
-    const char* what() const noexcept override = 0;
 };
 
 class WrongType : public PlayerException {
@@ -27,7 +25,7 @@ public:
         return "no necessary data";
     }
 };
-class CorruptedFile : public PlayerException {
+class CorruptFile : public PlayerException {
 public:
     const char* what() const noexcept override {
         return "corrupt file";
@@ -40,17 +38,17 @@ public:
 
 class Mode {
 public:
-    virtual void play_with_mode(std::list<PlaylistInterface*>& list) {
+    virtual void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
 
     }
 };
 class SequenceMode : public Mode {
 public:
-    void play_with_mode(std::list<PlaylistInterface*>& list) override;
+    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
 
-void SequenceMode::play_with_mode(std::list<PlaylistInterface *> &list) {
-    std::list<PlaylistInterface *>::iterator it;
+void SequenceMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>> &list) {
+    std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
     for (it = list.begin(); it != list.end(); it++) {
         (*it)->play();
     }
@@ -58,9 +56,9 @@ void SequenceMode::play_with_mode(std::list<PlaylistInterface *> &list) {
 
 class OddEvenMode : public Mode {
 public:
-    void play_with_mode(std::list<PlaylistInterface*>& list) override;
+    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
-void play_every_two(std::list<PlaylistInterface *>::iterator& it, std::list<PlaylistInterface *>& list) {
+void play_every_two(std::list<std::shared_ptr<PlaylistInterface>>::iterator& it, std::list<std::shared_ptr<PlaylistInterface>>& list) {
     while (it != list.end()) {
         (*it)->play();
         it++;
@@ -70,8 +68,8 @@ void play_every_two(std::list<PlaylistInterface *>::iterator& it, std::list<Play
     }
 }
 
-void OddEvenMode::play_with_mode(std::list<PlaylistInterface *>& list) {
-    std::list<PlaylistInterface *>::iterator it;
+void OddEvenMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
+    std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
     it = list.begin();
     it++;
     play_every_two(it, list);
@@ -86,56 +84,56 @@ public:
     ShuffleMode(size_t new_seed) {
         seed = new_seed;
     }
-    void play_with_mode(std::list<PlaylistInterface*>& list) override;
+    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
 
-void ShuffleMode::play_with_mode(std::list<PlaylistInterface *>& list) {
-    std::vector<std::reference_wrapper<PlaylistInterface *>> vec(list.begin(), list.end());
+void ShuffleMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
+    std::vector<std::reference_wrapper<std::shared_ptr<PlaylistInterface>>> vec(list.begin(), list.end());
     std::shuffle(vec.begin(), vec.end(), std::default_random_engine(seed));
-    std::list<PlaylistInterface*> new_list {vec.begin(), vec.end()};
-    std::list<PlaylistInterface *>::iterator it;
+    std::list<std::shared_ptr<PlaylistInterface>> new_list {vec.begin(), vec.end()};
+    std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
     for (it = new_list.begin(); it != new_list.end(); it++) {
         (*it)->play();
     }
 }
 
-SequenceMode* createSequenceMode() {
-    return new SequenceMode();
+std::shared_ptr<SequenceMode> createSequenceMode() {
+    return std::make_shared<SequenceMode>();
 }
-OddEvenMode* createOddEvenMode() {
-    return new OddEvenMode();
+std::shared_ptr<OddEvenMode> createOddEvenMode() {
+    return std::make_shared<OddEvenMode>();
 }
-ShuffleMode* createShuffleMode(size_t seed) {
-    return new ShuffleMode(seed);
+std::shared_ptr<ShuffleMode> createShuffleMode(size_t seed) {
+    return std::make_shared<ShuffleMode>(seed);
 }
 
 class Playlist : public PlaylistInterface {
 private:
-    std::list<PlaylistInterface*> list_to_play;
+    std::list<std::shared_ptr<PlaylistInterface>> list_to_play;
     const char* name;
-    Mode* mode;
+    std::shared_ptr<Mode> mode;
 public:
     Playlist(const char* myname) {
-        list_to_play = std::list<PlaylistInterface*>();
+        list_to_play = std::list<std::shared_ptr<PlaylistInterface>>();
         name = myname;
-        SequenceMode* sm = new SequenceMode();
+        std::shared_ptr<SequenceMode> sm = std::make_shared<SequenceMode>();
         mode = sm;
     }
-    void add(PlaylistInterface* pi);
-    void add(PlaylistInterface* pi, size_t position);
+    void add(std::shared_ptr<PlaylistInterface> pi);
+    void add(std::shared_ptr<PlaylistInterface> pi, size_t position);
     void remove();
     void remove(size_t position);
-    void setMode(Mode* mode);
+    void setMode(std::shared_ptr<Mode> mode);
 
     void play() override;
 };
 
-void Playlist::add(PlaylistInterface* pi) {
+void Playlist::add(std::shared_ptr<PlaylistInterface> pi) {
     list_to_play.push_back(pi);
-    PlaylistInterface* p = list_to_play.front();
+    std::shared_ptr<PlaylistInterface> p = list_to_play.front();
 }
 
-void Playlist::add(PlaylistInterface* pi, size_t position) {
+void Playlist::add(std::shared_ptr<PlaylistInterface> pi, size_t position) {
     auto it = list_to_play.begin();
     std::advance(it, position);
     list_to_play.insert(it, pi);
@@ -151,7 +149,7 @@ void Playlist::remove(size_t position) {
     list_to_play.erase(it);
 }
 
-void Playlist::setMode(Mode* new_mode) {
+void Playlist::setMode(std::shared_ptr<Mode> new_mode) {
     mode = new_mode;
 }
 
@@ -199,6 +197,7 @@ private:
     std::string year;
     std::string title;
     std::string lyrics;
+    std::string unROT13(std::string str);
 public:
     Movie(std::unordered_map<std::string, std::string>& data, std::string& lyr) {
         auto it = data.find("year");
@@ -218,8 +217,19 @@ public:
     void play() override;
 };
 
+std::string Movie::unROT13(std::string str) {
+    std::string unROT = str;
+    for(auto& it : unROT) {
+        if(it >= 'A' && it <= 'M') it += 13;
+        else if(it >= 'N' && it <= 'Z') it -= 13;
+        else if(it >= 'a' && it <= 'm') it += 13;
+        else if(it >= 'n' && it <= 'z') it -= 13;
+    }
+    return unROT;
+}
+
 void Movie::play() {
-    std::cout<<"Movie ["<<title<<" "<<year<<"]: "<<lyrics<<std::endl;
+    std::cout<<"Movie ["<<title<<" "<<year<<"]: "<<unROT13(lyrics)<<std::endl;
 }
 
 class File {
@@ -229,21 +239,21 @@ private:
     std::string lyrics;
     void parse(std::string& str);
 public:
-     File(const char *str) {
+    File(const char *str) {
         metadata = std::unordered_map<std::string, std::string>();
         std::string string_str = str;
         parse(string_str);
     }
     std::string& get_file_type() {
-         return file_type;
-     }
+        return file_type;
+    }
 
     std::unordered_map<std::string, std::string>& get_metadata() {
         return metadata;
     }
     std::string& get_lyrics() {
-         return lyrics;
-     }
+        return lyrics;
+    }
 };
 
 void File::parse(std::string &str) {
@@ -254,10 +264,10 @@ void File::parse(std::string &str) {
     std::regex e3("[^|]*\\|");
     std::regex e4(R"([a-zA-Z0-9\,\.\!\?\'\:\;\-\ ]+)");
     if (!std::regex_search(str, m, e1)) {
-        if (std::regex_search(str, m, e3)) {
-            throw WrongType();
+        if (!std::regex_search(str, m, e3)) {
+            throw CorruptFile();
         } else {
-            throw CorruptedFile();
+            throw WrongType();
         }
     }
     file_type = m.str(0);
@@ -286,36 +296,37 @@ void File::parse(std::string &str) {
 
 class PlayFactory {
 public:
-    virtual Play* create_play(File& file) = 0;
+    virtual std::shared_ptr<Play> create_play(File& file) = 0;
 };
 
 class AudioFactory : public PlayFactory {
-    public:
+public:
     AudioFactory() = default;
-    Play* create_play(File& file) override ;
+    std::shared_ptr<Play> create_play(File& file) override ;
 };
 
-Play* AudioFactory::create_play(File& file) {
-    Play* play = new Song(file.get_metadata(), file.get_lyrics());
+std::shared_ptr<Play> AudioFactory::create_play(File& file) {
+    std::shared_ptr<Play> play = std::make_shared<Song>(file.get_metadata(), file.get_lyrics());
     return play;
 }
 class MovieFactory : public PlayFactory {
 public:
     MovieFactory() = default;
-    Play* create_play(File& file) override ;
+    std::shared_ptr<Play> create_play(File& file) override ;
 };
 
-Play* MovieFactory::create_play(File &file) {
-    Play* play =  new Movie(file.get_metadata(), file.get_lyrics());
+std::shared_ptr<Play> MovieFactory::create_play(File &file) {
+    std::shared_ptr<Play> play =  std::make_shared<Movie>(file.get_metadata(), file.get_lyrics());
     return play;
 }
+
 class Player {
 public:
-     static Play* openFile(File file);
-     static Playlist* createPlaylist(const char*);
+    static std::shared_ptr<Play> openFile(File file);
+    static std::shared_ptr<Playlist> createPlaylist(const char*);
 };
-Play* Player::openFile(File file) {
-    Play* play = nullptr;
+std::shared_ptr<Play> Player::openFile(File file) {
+    std::shared_ptr<Play> play = nullptr;
     if (file.get_file_type() == "audio") {
         AudioFactory af = AudioFactory();
         play = af.create_play(file);
@@ -327,8 +338,8 @@ Play* Player::openFile(File file) {
     return play;
 }
 
-Playlist* Player::createPlaylist(const char *name) {
-    auto playlist = new Playlist(name);
+std::shared_ptr<Playlist> Player::createPlaylist(const char *name) {
+    auto playlist = std::make_shared<Playlist>(name);
     return playlist;
 }
 
