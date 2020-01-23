@@ -47,7 +47,7 @@ public:
 class PlaylistInterface {
 public:
     virtual void play() = 0;
-    virtual bool is_collision(std::list<std::shared_ptr<PlaylistInterface>>& list) = 0;
+    virtual bool is_collision(PlaylistInterface* obj) = 0;
     virtual bool can_cause_collision() = 0;
 };
 
@@ -139,13 +139,13 @@ public:
     void remove();
     void remove(size_t position);
     void setMode(std::shared_ptr<Mode> mode);
-    bool is_collision(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
+    bool is_collision(PlaylistInterface* obj) override;
     bool can_cause_collision() override;
     void play() override;
 };
 
 void Playlist::add(const std::shared_ptr<PlaylistInterface>& pi) {
-    if (pi->is_collision(list_to_play)) {
+    if (pi->is_collision(this)) {
         throw NoCyclesAllowed();
     }
     list_to_play.push_back(pi);
@@ -153,7 +153,7 @@ void Playlist::add(const std::shared_ptr<PlaylistInterface>& pi) {
 }
 
 void Playlist::add(const std::shared_ptr<PlaylistInterface>& pi, size_t position) {
-    if (pi->is_collision(list_to_play)) {
+    if (pi->is_collision(this)) {
         throw NoCyclesAllowed();
     }
     auto it = list_to_play.begin();
@@ -180,12 +180,17 @@ void Playlist::play() {
     mode->play_with_mode(list_to_play);
 }
 
-bool Playlist::is_collision(std::list<std::shared_ptr<PlaylistInterface>>& list) {
-    auto it = list.begin();
-    while (it != list.end()) {
+bool Playlist::is_collision(PlaylistInterface* obj) {
+    if (obj == this) {
+        return true;
+    }
+    auto it = list_to_play.begin();
+    while (it != list_to_play.end()) {
         if ((*it)->can_cause_collision()) {
             Playlist* pl = dynamic_cast<Playlist*>(it->get());
-            if (pl->list_to_play == list_to_play || pl->is_collision(list)) {
+            bool b1 = (this == obj);
+            bool b2 = pl->is_collision(obj);
+            if (b1|| b2) {
                 return true;
             }
         }
@@ -202,12 +207,12 @@ class Play : public PlaylistInterface {
 
 public:
     Play() = default;
-    bool is_collision(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
+    bool is_collision(PlaylistInterface* obj) override;
     bool can_cause_collision() override;
     void play() override = 0;
 };
 
-bool Play::is_collision(std::list<std::shared_ptr<PlaylistInterface>>& list) {
+bool Play::is_collision(PlaylistInterface* obj) {
     return false;
 }
 
@@ -262,18 +267,18 @@ public:
         if (it == data.end()) {
             throw NoNecessaryData();
         } else {
-            year = it->second;
+            std::string& new_year = it->second;
+            if (correct_year(new_year)) {
+                year = it->second;
+            } else {
+                throw WrongYear();
+            }
         }
         it = data.find("title");
         if (it == data.end()) {
             throw NoNecessaryData();
         } else {
-            std::string& new_year = it->second;
-            if (correct_year(new_year)) {
-                title = it->second;
-            } else {
-                throw WrongYear();
-            }
+            title = it->second;
         }
         lyrics = lyr;
     }
@@ -420,9 +425,11 @@ int main() {
         armstrong2->add(armstrong);
         mishmash->add(armstrong);
         mishmash->add(armstrong2);
+        mishmash->play();
     } catch (PlayerException const& e) {
         std::cout << e.what() << std::endl;
     }
+
 
 //    auto mishmash = player.createPlaylist("mishmash");
 //    auto armstrong = player.createPlaylist("armstrong");
