@@ -1,6 +1,3 @@
-//
-// Created by kuba on 23.01.2020.
-//
 #ifndef JNP6_LIB_PLAYLIST_H
 #define JNP6_LIB_PLAYLIST_H
 #include <iostream>
@@ -8,6 +5,7 @@
 #include <regex>
 #include <list>
 #include <random>
+
 //Korzen klas wyjatkow
 class PlayerException : public std::exception{
 };
@@ -71,16 +69,19 @@ public:
 //Abstrakcyjna klasa sposobu odtwarzania
 class Mode {
 public:
-    virtual void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) = 0;
+    virtual void play_with_mode
+                (std::list<std::shared_ptr<PlaylistInterface>>& list) = 0;
     virtual ~Mode() = default;
 };
 //sekwencyjny sposob odtwarzania
 class SequenceMode : public Mode {
 public:
-    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
+    void play_with_mode
+        (std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
 //metoda, ktora odtwarza playliste w kolejnosci sekwencyjnej
-void SequenceMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>> &list) {
+void SequenceMode::play_with_mode
+                (std::list<std::shared_ptr<PlaylistInterface>> &list) {
     std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
     for (it = list.begin(); it != list.end(); it++) {
         (*it)->play();
@@ -89,10 +90,12 @@ void SequenceMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>> 
 //sposob odtwarzania nieparzyste/parzyste
 class OddEvenMode : public Mode {
 public:
-    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
+    void play_with_mode
+        (std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
 //metoda, ktora odtwarza co druga piosenke
-void play_every_two(std::list<std::shared_ptr<PlaylistInterface>>::iterator& it, std::list<std::shared_ptr<PlaylistInterface>>& list) {
+void play_every_two(std::list<std::shared_ptr<PlaylistInterface>>::iterator& it,
+                    std::list<std::shared_ptr<PlaylistInterface>>& list) {
     while (it != list.end()) {
         (*it)->play();
         it++;
@@ -102,7 +105,8 @@ void play_every_two(std::list<std::shared_ptr<PlaylistInterface>>::iterator& it,
     }
 }
 //metoda, ktora odtwarza playliste w kolejnosci nieparzyste/parzyste
-void OddEvenMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
+void OddEvenMode::play_with_mode
+                (std::list<std::shared_ptr<PlaylistInterface>>& list) {
     std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
     it = list.begin();
     it++;
@@ -118,14 +122,20 @@ public:
     ShuffleMode(size_t new_seed) {
         seed = new_seed;
     }
-    void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) override;
+    void play_with_mode
+        (std::list<std::shared_ptr<PlaylistInterface>>& list) override;
 };
 //metoda, ktora odtwarza w kolejnosci losowej
-void ShuffleMode::play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
-    std::vector<std::reference_wrapper<std::shared_ptr<PlaylistInterface>>> vec(list.begin(), list.end());
+void ShuffleMode::play_with_mode
+                (std::list<std::shared_ptr<PlaylistInterface>>& list) {
+    
+    std::vector<std::reference_wrapper<std::shared_ptr<PlaylistInterface>>> 
+                vec(list.begin(), list.end());
     std::shuffle(vec.begin(), vec.end(), std::default_random_engine(seed));
-    std::list<std::shared_ptr<PlaylistInterface>> new_list {vec.begin(), vec.end()};
+    std::list<std::shared_ptr<PlaylistInterface>> 
+                new_list {vec.begin(), vec.end()};
     std::list<std::shared_ptr<PlaylistInterface>>::iterator it;
+    
     for (it = new_list.begin(); it != new_list.end(); it++) {
         (*it)->play();
     }
@@ -177,7 +187,8 @@ void Playlist::add(const std::shared_ptr<PlaylistInterface>& pi) {
     list_to_play.push_back(pi);
 }
 //dodaje nowy element, na konkretna pozycje w liscie
-void Playlist::add(const std::shared_ptr<PlaylistInterface>& pi, size_t position) {
+void Playlist::add
+        (const std::shared_ptr<PlaylistInterface>& pi, size_t position) {
     if (pi->is_collision(this)) {
         throw NoCyclesAllowed();
     }
@@ -265,11 +276,14 @@ private:
     std::string title;
     std::string lyrics;
 public:
-    Song(std::unordered_map<std::string, std::string>& data, std::string& lyrics_add);
+    Song(std::unordered_map<std::string, std::string>& data, 
+            std::string& lyrics_add);
     void play() override;
 };
-//konstruktor klasy piosenka, ktory sprawdza czy wszytskie parametry sa podane poprawnie
-Song::Song(std::unordered_map<std::string, std::string>& data, std::string& lyrics_add) {
+//konstruktor klasy piosenka, ktory sprawdza 
+//czy wszytskie parametry sa podane poprawnie
+Song::Song(std::unordered_map<std::string, 
+        std::string>& data, std::string& lyrics_add) {
     auto it = data.find("artist");
     if (it == data.end()) {
         throw NoNecessaryData();
@@ -305,11 +319,14 @@ private:
     std::string lyrics;
     std::string unROT13(std::string &str);
 public:
-    Movie(std::unordered_map<std::string, std::string>& data, std::string& lyr);
+    Movie(std::unordered_map<std::string, std::string>& data, 
+            std::string& lyr);
     void play() override;
 };
-//Konstruktor klasy Movie, ktory sprawdza czy wszytkie parametry zostaly podane poprawnie
-Movie::Movie(std::unordered_map<std::string, std::string>& data, std::string& lyr) {
+//Konstruktor klasy Movie, ktory sprawdza czy wszytkie parametry 
+// zostaly podane poprawnie
+Movie::Movie(std::unordered_map<std::string, std::string>& data, 
+        std::string& lyr) {
     auto it = data.find("year");
     if (it == data.end()) {
         throw NoNecessaryData();
@@ -419,7 +436,8 @@ public:
 };
 //metoda tworzaca nowy obiekt klasy Song
 std::shared_ptr<Play> AudioFactory::create_play(File& file) {
-    std::shared_ptr<Play> play = std::make_shared<Song>(file.get_metadata(), file.get_lyrics());
+    std::shared_ptr<Play> play = std::make_shared<Song>
+            (file.get_metadata(), file.get_lyrics());
     return play;
 }
 //klasa tworzaca nowy obiekt klasy Movie
@@ -430,7 +448,8 @@ public:
 };
 //metoda tworzaca nowy obiekt klasy Movie
 std::shared_ptr<Play> MovieFactory::create_play(File &file) {
-    std::shared_ptr<Play> play =  std::make_shared<Movie>(file.get_metadata(), file.get_lyrics());
+    std::shared_ptr<Play> play =  std::make_shared<Movie>
+                                  (file.get_metadata(), file.get_lyrics());
     return play;
 }
 //Klasa reprezentujaca Player
