@@ -49,6 +49,8 @@ public:
     virtual void play() = 0;
     virtual bool is_collision(PlaylistInterface* obj) = 0;
     virtual bool can_cause_collision() = 0;
+
+    virtual ~PlaylistInterface() = default;
 };
 
 class Mode {
@@ -56,6 +58,7 @@ public:
     virtual void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
 
     }
+    virtual ~Mode() = default;
 };
 class SequenceMode : public Mode {
 public:
@@ -260,7 +263,7 @@ private:
     std::string year;
     std::string title;
     std::string lyrics;
-    std::string unROT13(std::string str);
+    std::string unROT13(std::string &str);
 public:
     Movie(std::unordered_map<std::string, std::string>& data, std::string& lyr) {
         auto it = data.find("year");
@@ -280,24 +283,23 @@ public:
         } else {
             title = it->second;
         }
-        lyrics = lyr;
+        lyrics = unROT13(lyr);
     }
     void play() override;
 };
 
-std::string Movie::unROT13(std::string str) {
-    std::string unROT = str;
-    for(auto& it : unROT) {
+std::string Movie::unROT13(std::string &str) {
+    for(auto& it : str) {
         if(it >= 'A' && it <= 'M') it += 13;
         else if(it >= 'N' && it <= 'Z') it -= 13;
         else if(it >= 'a' && it <= 'm') it += 13;
         else if(it >= 'n' && it <= 'z') it -= 13;
     }
-    return unROT;
+    return str;
 }
 
 void Movie::play() {
-    std::cout<<"Movie ["<<title<<" "<<year<<"]: "<<unROT13(lyrics)<<std::endl;
+    std::cout<<"Movie ["<<title<<" "<<year<<"]: "<<lyrics<<std::endl;
 }
 
 class File {
@@ -365,6 +367,8 @@ void File::parse(std::string& str) {
 class PlayFactory {
 public:
     virtual std::shared_ptr<Play> create_play(File& file) = 0;
+
+    virtual ~PlayFactory() = default;
 };
 
 class AudioFactory : public PlayFactory {
@@ -413,77 +417,80 @@ std::shared_ptr<Playlist> Player::createPlaylist(const char *name) {
 
 int main() {
     Player player;
+//    auto mishmash = player.createPlaylist("mishmash");
+//    auto armstrong = player.createPlaylist("armstrong");
+//    auto armstrong2 = player.createPlaylist("armstrong2");
+//    auto whatAWonderfulWorld = player.openFile(File("audio|artist:Louis Armstrong|title:What a Wonderful World|"
+//                                                    "I see trees of green, red roses too..."));
+//
+//    auto cabaret = player.openFile(File("video|title:Cabaret|year:1972|Qvfcynlvat Pnonerg"));
+//
+//    try {
+//        armstrong->add(whatAWonderfulWorld);
+//        armstrong->add(armstrong2);
+//        armstrong2->add(whatAWonderfulWorld);
+//        armstrong2->add(armstrong);
+//        mishmash->add(armstrong);
+//        mishmash->add(armstrong2);
+//        mishmash->play();
+//    } catch (PlayerException const& e) {
+//        std::cout << e.what() << std::endl;
+//    }
+
+
     auto mishmash = player.createPlaylist("mishmash");
     auto armstrong = player.createPlaylist("armstrong");
-    auto armstrong2 = player.createPlaylist("armstrong2");
     auto whatAWonderfulWorld = player.openFile(File("audio|artist:Louis Armstrong|title:What a Wonderful World|"
                                                     "I see trees of green, red roses too..."));
+    auto helloDolly = player.openFile(File("audio|artist:Louis Armstrong|title:Hello, Dolly!|"
+                                           "Hello, Dolly! This is Louis, Dolly"));
+    armstrong->add(whatAWonderfulWorld);
+    armstrong->add(helloDolly);
+    auto direstraits = player.openFile(File("audio|artist:Dire Straits|title:Money for Nothing|"
+                                            "Now look at them yo-yo's that's the way you do it..."));
+    auto cabaret = player.openFile(File("video|title:Cabaret|year:1972|Qvfcynlvat Pnonerg"));
+
+
+    mishmash->add(cabaret);
+    mishmash->add(armstrong);
+    mishmash->add(direstraits, 1);
+    mishmash->add(direstraits);
+
+    std::cout << "=== Playing 'mishmash' (default sequence mode)" << std::endl;
+    mishmash->play();
+
+    std::cout << "=== Playing 'mishmash' (shuffle mode, seed 0 for std::default_random_engine)" << std::endl;
+    mishmash->setMode(createShuffleMode(0));
+    mishmash->play();
+
+    std::cout << "=== Playing 'mishmash' (removed cabaret and last direstraits, odd-even mode)" << std::endl;
+    mishmash->remove(0);
+    mishmash->remove();
+    mishmash->setMode(createOddEvenMode());
+    mishmash->play();
+
+    std::cout << "=== Playing 'mishmash' (sequence mode, 'armstrong' odd-even mode)" << std::endl;
+    armstrong->setMode(createOddEvenMode());
+    mishmash->setMode(createSequenceMode());
+    mishmash->play();
+
     try {
-        armstrong->add(whatAWonderfulWorld);
-        armstrong->add(armstrong2);
-        armstrong2->add(whatAWonderfulWorld);
-        armstrong2->add(armstrong);
-        mishmash->add(armstrong);
-        mishmash->add(armstrong2);
-        mishmash->play();
+        auto unsupported = player.openFile(File("mp3|artist:Unsupported|title:Unsupported|Content"));
     } catch (PlayerException const& e) {
         std::cout << e.what() << std::endl;
     }
 
+    try {
+        auto corrupted = player.openFile(File("Corrupt"));
+    } catch (PlayerException const& e) {
+        std::cout << e.what() << std::endl;
+    }
 
-//    auto mishmash = player.createPlaylist("mishmash");
-//    auto armstrong = player.createPlaylist("armstrong");
-//    auto whatAWonderfulWorld = player.openFile(File("audio|artist:Louis Armstrong|title:What a Wonderful World|"
-//                                                    "I see trees of green, red roses too..."));
-//    auto helloDolly = player.openFile(File("audio|artist:Louis Armstrong|title:Hello, Dolly!|"
-//                                           "Hello, Dolly! This is Louis, Dolly"));
-//    armstrong->add(whatAWonderfulWorld);
-//    armstrong->add(helloDolly);
-//    auto direstraits = player.openFile(File("audio|artist:Dire Straits|title:Money for Nothing|"
-//                                            "Now look at them yo-yo's that's the way you do it..."));
-//    auto cabaret = player.openFile(File("video|title:Cabaret|year:1972|Qvfcynlvat Pnonerg"));
-//
-//
-//    mishmash->add(cabaret);
-//    mishmash->add(armstrong);
-//    mishmash->add(direstraits, 1);
-//    mishmash->add(direstraits);
-//
-//    std::cout << "=== Playing 'mishmash' (default sequence mode)" << std::endl;
-//    mishmash->play();
-//
-//    std::cout << "=== Playing 'mishmash' (shuffle mode, seed 0 for std::default_random_engine)" << std::endl;
-//    mishmash->setMode(createShuffleMode(0));
-//    mishmash->play();
-//
-//    std::cout << "=== Playing 'mishmash' (removed cabaret and last direstraits, odd-even mode)" << std::endl;
-//    mishmash->remove(0);
-//    mishmash->remove();
-//    mishmash->setMode(createOddEvenMode());
-//    mishmash->play();
-//
-//    std::cout << "=== Playing 'mishmash' (sequence mode, 'armstrong' odd-even mode)" << std::endl;
-//    armstrong->setMode(createOddEvenMode());
-//    mishmash->setMode(createSequenceMode());
-//    mishmash->play();
-//
-//    try {
-//        auto unsupported = player.openFile(File("mp3|artist:Unsupported|title:Unsupported|Content"));
-//    } catch (PlayerException const& e) {
-//        std::cout << e.what() << std::endl;
-//    }
-//
-//    try {
-//        auto corrupted = player.openFile(File("Corrupt"));
-//    } catch (PlayerException const& e) {
-//        std::cout << e.what() << std::endl;
-//    }
-//
-//    try {
-//        auto corrupted = player.openFile(File("audio|artist:Louis Armstrong|title:Hello, Dolly!|%#!@*&"));
-//    } catch (PlayerException const& e) {
-//        std::cout << e.what() << std::endl;
-//    }
+    try {
+        auto corrupted = player.openFile(File("audio|artist:Louis Armstrong|title:Hello, Dolly!|%#!@*&"));
+    } catch (PlayerException const& e) {
+        std::cout << e.what() << std::endl;
+    }
 
     return 0;
 }
