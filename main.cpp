@@ -55,9 +55,7 @@ public:
 
 class Mode {
 public:
-    virtual void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) {
-
-    }
+    virtual void play_with_mode(std::list<std::shared_ptr<PlaylistInterface>>& list) = 0;
     virtual ~Mode() = default;
 };
 class SequenceMode : public Mode {
@@ -216,6 +214,7 @@ public:
 };
 
 bool Play::is_collision(PlaylistInterface* obj) {
+    (void)obj;
     return false;
 }
 
