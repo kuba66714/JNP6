@@ -197,7 +197,10 @@ void Playlist::remove() {
 //usuwa element z okreslonej pozycji
 //lub rzuca wyjatek, gdy pozycja jest niepoprawna
 void Playlist::remove(size_t position) {
-    if (position > list_to_play.size()) {
+    size_t list_size = list_to_play.size();
+    bool var1 = (position == 0 && list_size == 0);
+    bool var2 = (position > 0 && list_size <= position);
+    if (var1 || var2) {
         throw RemoveError();
     }
     auto it = list_to_play.begin();
